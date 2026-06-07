@@ -38,6 +38,7 @@ Abre tu terminal (**Windows + R → cmd → Enter**) y ejecuta:
 
 ```cmd
 winget install Gyan.FFmpeg
+```
 
 Cuando termine, puedes cerrar la terminal.
 
@@ -271,7 +272,7 @@ npm run dev
 
 ---
 
-# ✅ ¡Listo!
+### ✅ ¡Listo!
 
 La terminal del frontend te mostrará una dirección local, normalmente algo parecido a:
 
@@ -281,5 +282,47 @@ http://localhost:5173/
 
 Copia esa dirección, pégala en tu navegador y disfruta de **TubePipe** 🚀
 
+## ⚡ Método Avanzado: Ejecutar Backend y Frontend con un solo comando
+
+Si prefieres no tener que abrir dos terminales separadas cada vez que vas a programar, puedes automatizar el arranque de ambos servidores utilizando un único comando en la carpeta del frontend.
+
+### 1. Instalar `concurrently` en el Frontend
+Abre tu terminal, entra a la carpeta de React e instala la herramienta de desarrollo:
+```bash
+cd frontend
+npm install concurrently --save-dev
 ```
+
+### 2. Modificar el package.json del Frontend
+Abre el archivo package.json que está dentro de la carpeta frontend. En la sección de "scripts", modifica la línea "dev" para incluir el comando del backend:
+
+```json
+"scripts": {
+  "dev": "concurrently \"cd ../backend && python3 manage.py runserver\" \"vite\"",
+  "build": "vite build",
+  "preview": "vite preview"
+}
 ```
+> (Nota: Si no usas Vite y tu script original usaba next o react-scripts start, simplemente reemplaza la palabra "vite" al final por tu comando original).
+
+#### ¿Cómo se ejecuta ahora?
+A partir de este momento, tu flujo de trabajo se reduce a una sola ventana de terminal:
+
+1. Abre la terminal en la raíz del proyecto.
+
+2. Ve a la carpeta de React: cd frontend
+
+3. Ejecuta el comando de desarrollo: npm run dev
+
+#### 💡 ¿Por qué ya no es necesario ejecutar el comando de Python por separado?
+Nota importante: Aunque en los pasos anteriores de esta guía se detalla cómo levantar cada servidor de forma manual (lo cual es ideal para comprender la arquitectura del proyecto), al usar esta nueva configuración el comando python3 manage.py runserver ya no se debe ejecutar manualmente.
+
+La librería concurrently funciona como un director de orquesta en tu terminal:
+
+- Automatización: Ella misma retrocede un nivel en el directorio (cd ../backend) y ejecuta el servidor de Django en segundo plano por ti.
+
+- Simultaneidad: Al mismo tiempo, enciende el servidor local de React (Vite).
+
+- Consolidación: Junta las respuestas y errores de ambos servidores en la misma pantalla para que puedas monitorear todo en un solo lugar. Al presionar Ctrl + C, cerrará ambos procesos de forma segura.
+
+
