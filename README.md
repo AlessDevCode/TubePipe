@@ -1,4 +1,3 @@
-````md
 # 🚀 TubePipe
 
 ¡Bienvenido a **TubePipe**! Esta es una aplicación web diseñada para descargar videos (**MP4**) y audios (**MP3**) de manera rápida y sencilla.
@@ -39,7 +38,6 @@ Abre tu terminal (**Windows + R → cmd → Enter**) y ejecuta:
 
 ```cmd
 winget install Gyan.FFmpeg
-````
 
 Cuando termine, puedes cerrar la terminal.
 
