@@ -421,3 +421,13 @@ python ver_arbol.py
 (Recuerda que en Linux o Mac, puede que necesites escribir python3 ver_arbol.py).
 
 El resultado será un mapa perfecto en texto plano que puedes copiar y pegar directamente en tus notas o documentación para presumir el orden de tu arquitectura. ¡Es un excelente añadido para el flujo de desarrollo!
+
+## ☕ Apoya el proyecto
+
+**TubePipe** es un proyecto de código abierto desarrollado con mucho entusiasmo para facilitar la descarga de contenido multimedia. Lograr la arquitectura multiusuario, asegurar los endpoints con JWT y sincronizar todo con entornos virtuales tomó bastantes horas de pruebas y café.
+
+Si esta herramienta te resulta útil, te ahorra tiempo o te sirve para tus propios desarrollos, ¡puedes apoyarme! 
+
+🚀 [Invítame un café en Ko-fi](https://ko-fi.com/alesdevcode)
+
+¡Cualquier apoyo o una simple en el repositorio se agradece de corazón!
