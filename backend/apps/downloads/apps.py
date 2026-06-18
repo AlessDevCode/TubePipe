@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 class DownloadsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.downloads' # <-- CAMBIO CRÍTICO: Añadimos el prefijo 'apps.'
+    name = 'apps.downloads' 

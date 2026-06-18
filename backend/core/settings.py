@@ -31,9 +31,9 @@ INSTALLED_APPS = [
     # CORS y REST Framework
     'corsheaders',
     'rest_framework',
-    'rest_framework_simplejwt', # <-- ¡Faltaba registrar SimpleJWT aquí!
+    'rest_framework_simplejwt',
 
-    # Tus aplicaciones locales (con su ruta completa en el proyecto)
+    # Aplicaciones locales (con su ruta completa en el proyecto)
     'apps.downloads',           
     'apps.users', 
 ]

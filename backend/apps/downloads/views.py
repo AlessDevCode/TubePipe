@@ -1,6 +1,6 @@
 import os
 import yt_dlp
-from django.conf import settings                                   # <-- 1. IMPORTAMOS LAS CONFIGURACIONES GLOBALES
+from django.conf import settings
 from django.http import FileResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -9,7 +9,7 @@ from rest_framework import status
 from .models import DownloadRecord
 from .serializers import DownloadRecordSerializer
 @api_view(['GET'])
-@permission_classes([IsAuthenticated]) # <-- Protege el historial, requiere JWT
+@permission_classes([IsAuthenticated]) # Protege el historial, requiere JWT
 def get_history(request):
     """Devuelve la lista de videos descargados EXCLUSIVAMENTE por el usuario autenticado."""
     # Filtramos por request.user para que no vea descargas ajenas
@@ -31,8 +31,7 @@ def download_video(request):
 
     record = DownloadRecord.objects.create(url=url, status='pending', user=request.user)
 
-    try:
-        # 2. RESOLUCIÓN LIMPIA DE RUTAS: 
+    try: 
         # Tomamos settings.MEDIA_ROOT y le concatenamos el nombre del usuario logueado
         user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username)
         
@@ -46,7 +45,7 @@ def download_video(request):
         if file_format == 'mp3':
             ydl_opts = {
                 'format': 'bestaudio/best',
-                'outtmpl': out_template,  # <-- Usamos la variable limpia
+                'outtmpl': out_template,  # Usamos la variable limpia
                 'noplaylist': True,
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
@@ -57,7 +56,7 @@ def download_video(request):
         elif file_format == 'm4a':
             ydl_opts = {
                 'format': 'bestaudio[ext=m4a]/bestaudio',
-                'outtmpl': out_template,  # <-- Usamos la variable limpia
+                'outtmpl': out_template,  # Usamos la variable limpia
                 'noplaylist': True,
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
@@ -67,7 +66,7 @@ def download_video(request):
         else: # mp4
             ydl_opts = {
                 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-                'outtmpl': out_template,  # <-- Usamos la variable limpia
+                'outtmpl': out_template,  # Usamos la variable limpia
                 'noplaylist': True,
             }
 
@@ -97,7 +96,7 @@ def download_video(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated]) # <-- NUEVO: Endpoint de borrado protegido
+@permission_classes([IsAuthenticated]) # Endpoint de borrado protegido
 def delete_history(request, pk):
     """Elimina un registro del historial si pertenece al usuario autenticado."""
     try:

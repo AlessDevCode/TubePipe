@@ -1,6 +1,6 @@
 # 🚀 TubePipe
 
-¡Bienvenido a **TubePipe**! Esta es una aplicación web diseñada para descargar videos (**MP4**) y audios (**MP3**) de manera rápida y sencilla.
+¡Bienvenido a **TubePipe**! Esta es una aplicación web diseñada para descargar videos (**MP4**) y audios (**MP3** y **M$A**) de manera rápida y sencilla.
 
 Este proyecto está dividido en dos partes:
 
@@ -321,16 +321,20 @@ npm install concurrently --save-dev
 ```
 
 ### 2. Modificar el package.json del Frontend
-Abre el archivo package.json que está dentro de la carpeta frontend. En la sección de "scripts", modifica la línea "dev" para incluir el comando del backend:
+Abre el archivo package.json que está dentro de la carpeta frontend. En la sección de "scripts", modifica la línea "dev".
+
+En lugar de usar un comando de Python global (que requeriría activar el entorno virtual manualmente en esa terminal), apuntaremos directamente al ejecutable de Python que vive dentro de nuestra "burbuja" (env_tubepipe):
 
 ```json
 "scripts": {
-  "dev": "concurrently \"cd ../backend && python3 manage.py runserver\" \"vite\"",
+  "dev": "concurrently \"cd ../backend && ./env_tubepipe/bin/python manage.py runserver\" \"vite\"",
   "build": "vite build",
+  "lint": "eslint .",
   "preview": "vite preview"
 }
 ```
 > (Nota: Si no usas Vite y tu script original usaba next o react-scripts start, simplemente reemplaza la palabra "vite" al final por tu comando original).
+> (Nota para usuarios de Windows: Si en lugar de usar Git Bash utilizas la terminal nativa CMD de Windows, la ruta del entorno virtual utiliza barras invertidas: .\env_tubepipe\Scripts\python.exe).
 
 #### ¿Cómo se ejecuta ahora?
 A partir de este momento, tu flujo de trabajo se reduce a una sola ventana de terminal:
@@ -341,16 +345,18 @@ A partir de este momento, tu flujo de trabajo se reduce a una sola ventana de te
 
 3. Ejecuta el comando de desarrollo: npm run dev
 
-#### 💡 ¿Por qué ya no es necesario ejecutar el comando de Python por separado?
-Nota importante: Aunque en los pasos anteriores de esta guía se detalla cómo levantar cada servidor de forma manual (lo cual es ideal para comprender la arquitectura del proyecto), al usar esta nueva configuración el comando python3 manage.py runserver ya no se debe ejecutar manualmente.
+#### 💡 ¿Por qué esta configuración es mucho más robusta y cómoda?
+Nota importante: Aunque en los pasos anteriores de esta guía se detalla cómo levantar cada servidor de forma manual (lo cual requiere usar comandos como source activate para encender el entorno virtual), con esta nueva configuración ya no necesitas activar el entorno virtual por tu cuenta.
 
-La librería concurrently funciona como un director de orquesta en tu terminal:
+La combinación de la librería concurrently y la ruta directa al entorno virtual funciona como un director de orquesta inteligente:
 
-- Automatización: Ella misma retrocede un nivel en el directorio (cd ../backend) y ejecuta el servidor de Django en segundo plano por ti.
+- Ruta directa al motor: Al escribir ./env_tubepipe/bin/python, le indicas al sistema la ubicación exacta del Python que tiene instaladas las librerías del proyecto (yt-dlp, django, etc.), evitando errores si tienes otras versiones de Python en tu computadora.
+
+- Automatización: El comando retrocede un nivel en tus carpetas (cd ../backend), busca el entorno virtual y arranca el servidor de Django en segundo plano de manera automática.
 
 - Simultaneidad: Al mismo tiempo, enciende el servidor local de React (Vite).
 
-- Consolidación: Junta las respuestas y errores de ambos servidores en la misma pantalla para que puedas monitorear todo en un solo lugar. Al presionar Ctrl + C, cerrará ambos procesos de forma segura.
+- Consolidación: Junta las respuestas, procesos y errores de ambos servidores en la misma pantalla para que monitorees todo en un solo lugar. Al presionar Ctrl + C, cerrará ambos procesos en simultáneo de forma segura.
 
 > (Nota para usuarios de Windows usando Concurrently: Si al ejecutar npm run dev ves un error que dice que "python3" no se reconoce como un comando, abre el package.json de tu frontend y cambia la palabra python3 por python en la línea de los scripts.)
 
@@ -372,6 +378,7 @@ En TubePipe, nuestro .gitignore está configurado específicamente para proteger
 3. El almacenamiento: Bloquea la carpeta downloads_media, asegurando que los videos o canciones pesadas que descargues para probar la app se queden guardados únicamente en tu computadora y no llenen tu cuenta de GitHub.
 
 ### ¿Qué es y para qué sirve el archivo README.md? (Explicación simple)
+
 El archivo README.md (que se traduce literalmente como "LÉEME") es la carta de presentación, el manual de instrucciones y la portada de cualquier proyecto de software. La extensión .md significa Markdown, que es un formato de texto simple que permite añadir negritas, títulos y listas de forma elegante.
 
 Cuando entras a un repositorio en GitHub, lo primero que ves abajo es justamente el contenido de este archivo.
@@ -390,7 +397,7 @@ En pocas palabras: sin un README.md, el proyecto sería una caja negra llena de 
 ### ¿Qué es y para que sirve el script ver_arbol.py? (Esta en la raiz)
 Cuando un proyecto de programación crece, se llena de miles de archivos automáticos pesados (como las librerías de node_modules o los archivos internos de Python). Si intentáramos ver todas las carpetas con un comando común del sistema, la pantalla se inundaría de texto basura y sería imposible entender cómo está organizado nuestro código.
 
-ver_arbol.py es un mapeador inteligente de directorios hecho en Python. Su única función es leer la carpeta actual y dibujar en la terminal un esquema visual (un "árbol") limpio y estético de nuestro proyecto, mostrando únicamente los archivos de código reales que nosotros escribimos y modificamos.
+`ver_arbol.py` es un mapeador inteligente de directorios hecho en Python. Su única función es leer la carpeta actual y dibujar en la terminal un esquema visual (un "árbol") limpio y estético de nuestro proyecto, mostrando únicamente los archivos de código reales que nosotros escribimos y modificamos.
 
 ### 🔍 ¿Cómo funciona por dentro?
 El script es muy elegante y sigue tres pasos clave:
