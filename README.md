@@ -50,6 +50,12 @@ Abre tu terminal y ejecuta:
 sudo apt update && sudo apt install ffmpeg -y
 ```
 
+### Si usas macOS (Mac)
+Abre tu terminal e instala FFmpeg usando Homebrew:
+
+```bash
+brew install ffmpeg
+```
 ---
 
 ## 3. Instalar Git y Git Bash (Para descargar el código)
@@ -160,13 +166,18 @@ python -m venv env_tubepipe
 
 ## 3. Activar el entorno virtual
 
-### En Windows
+### En Windows (Si usas Git Bash):
 
 ```bash
 source env_tubepipe/Scripts/activate
 ```
+### En Windows (Si usas la terminal común CMD):
 
-### En Linux/Mac
+```dos
+env_tubepipe\Scripts\activate.bat
+```
+
+### En Linux/Mac:
 
 ```bash
 source env_tubepipe/bin/activate
@@ -215,6 +226,13 @@ Te pedirá:
 * Contraseña
 
 > La contraseña no se verá mientras escribes. Es completamente normal.
+
+### ¿Para qué sirve el usuario administrador?
+Una vez creado, podrás ingresar a http://127.0.0.1:8000/admin/ desde tu navegador. En este panel de control podrás:
+
+- Gestionar y eliminar usuarios registrados.
+
+- Revisar la tabla Download records, donde verás los títulos, URLs y estados de todas las descargas del sistema. Si necesitas limpiar la base de datos para hacer pruebas desde cero, podrás borrar los registros masivamente desde aquí de forma segura.
 
 ---
 
@@ -282,6 +300,15 @@ http://localhost:5173/
 
 Copia esa dirección, pégala en tu navegador y disfruta de **TubePipe** 🚀
 
+## 🔒 Nota Clave sobre la Seguridad y Uso de TubePipe
+Para que la aplicación funcione correctamente, el sistema cuenta con un sistema de usuarios estricto y protegido:
+
+- Es obligatorio registrarse e iniciar sesión: No podrás ingresar a la pantalla de descargas ni enviar links de manera anónima. Si intentas escribir la URL de descarga directamente en el navegador, el backend te rechazará con un error de credenciales.
+
+- Historial Privado: Cada usuario registrado verá únicamente las canciones y videos que él mismo ha descargado. Tus descargas están completamente protegidas de otros usuarios.
+
+- Estructura Organizada en el Servidor: Cuando realices una descarga exitosa, el backend creará automáticamente una carpeta con tu nombre de usuario dentro de la carpeta downloads_media/ en el servidor, manteniendo todos tus archivos aislados y ordenados.
+
 ## ⚡ Método Avanzado: Ejecutar Backend y Frontend con un solo comando
 
 Si prefieres no tener que abrir dos terminales separadas cada vez que vas a programar, puedes automatizar el arranque de ambos servidores utilizando un único comando en la carpeta del frontend.
@@ -325,4 +352,65 @@ La librería concurrently funciona como un director de orquesta en tu terminal:
 
 - Consolidación: Junta las respuestas y errores de ambos servidores en la misma pantalla para que puedas monitorear todo en un solo lugar. Al presionar Ctrl + C, cerrará ambos procesos de forma segura.
 
+> (Nota para usuarios de Windows usando Concurrently: Si al ejecutar npm run dev ves un error que dice que "python3" no se reconoce como un comando, abre el package.json de tu frontend y cambia la palabra python3 por python en la línea de los scripts.)
 
+## README.md y .gitignore
+
+### ¿Qué es y para qué sirve el archivo .gitignore? (Explicación simple)
+Imagínalo como una "capa de invisibilidad" o una lista negra para Git.
+
+Cuando trabajamos en un proyecto de programación, la computadora genera cientos de archivos automáticos que nosotros no escribimos (como las librerías de Node.js o Python, archivos temporales del sistema, o bases de datos locales con nuestras contraseñas de prueba). Si subiéramos todo eso a GitHub, el repositorio se volvería extremadamente pesado, lento y, peor aún, inseguro.
+
+El archivo .gitignore le dice a Git: "Oye, mantén un ojo en mi código, pero ignora por completo y no subas a internet ninguna de las carpetas o archivos que están anotados en esta lista".
+
+En TubePipe, nuestro .gitignore está configurado específicamente para proteger tres cosas:
+
+1. Tu privacidad: Evita que se suba la base de datos local (db.sqlite3) con tus usuarios de prueba o contraseñas.
+
+2. El rendimiento de GitHub: Ignora carpetas gigantescas como node_modules o el entorno virtual (env_tubepipe), ya que estas se pueden volver a generar en cualquier computadora con un solo comando.
+
+3. El almacenamiento: Bloquea la carpeta downloads_media, asegurando que los videos o canciones pesadas que descargues para probar la app se queden guardados únicamente en tu computadora y no llenen tu cuenta de GitHub.
+
+### ¿Qué es y para qué sirve el archivo README.md? (Explicación simple)
+El archivo README.md (que se traduce literalmente como "LÉEME") es la carta de presentación, el manual de instrucciones y la portada de cualquier proyecto de software. La extensión .md significa Markdown, que es un formato de texto simple que permite añadir negritas, títulos y listas de forma elegante.
+
+Cuando entras a un repositorio en GitHub, lo primero que ves abajo es justamente el contenido de este archivo.
+
+Su objetivo principal es responderle a cualquier programador o usuario que acabe de llegar las siguientes preguntas:
+
+1. ¿Qué hace este proyecto? (En nuestro caso, una aplicación para descargar videos y audios).
+
+2. ¿Qué tecnologías utiliza? (Django, React, yt-dlp, FFmpeg).
+
+3. ¿Cómo lo hago funcionar en mi computadora? (Toda la guía paso a paso de comandos e instalaciones que estás leyendo ahora mismo).
+
+En pocas palabras: sin un README.md, el proyecto sería una caja negra llena de carpetas confusas. Gracias a él, cualquiera puede entender el propósito de TubePipe e instalarlo en minutos sin perderse en el intento.
+
+## Extra
+### ¿Qué es y para que sirve el script ver_arbol.py? (Esta en la raiz)
+Cuando un proyecto de programación crece, se llena de miles de archivos automáticos pesados (como las librerías de node_modules o los archivos internos de Python). Si intentáramos ver todas las carpetas con un comando común del sistema, la pantalla se inundaría de texto basura y sería imposible entender cómo está organizado nuestro código.
+
+ver_arbol.py es un mapeador inteligente de directorios hecho en Python. Su única función es leer la carpeta actual y dibujar en la terminal un esquema visual (un "árbol") limpio y estético de nuestro proyecto, mostrando únicamente los archivos de código reales que nosotros escribimos y modificamos.
+
+### 🔍 ¿Cómo funciona por dentro?
+El script es muy elegante y sigue tres pasos clave:
+
+1. El Filtro de Invisibilidad (Líneas 4 a 9): El script tiene dos listas estrictas:
+
+   - extensiones_validas / archivos_validos: Le dicen qué archivos sí nos interesan ver (como .jsx, .py, .json, .gitignore, etc.).
+
+   - carpetas_ignoradas: Esta es la parte más importante. Le prohíbe explícitamente al script entrar a carpetas gigantescas como node_modules, env_tubepipe o .git. Así se evita que la terminal colapse mostrando código ajeno.
+
+2. El Organizador Visual (Línea 32): Para que el árbol se vea hermoso y profesional, el script ordena todo alfabéticamente, pero con una regla de oro: las carpetas siempre van arriba y los archivos sueltos van abajo.
+
+3. El Efecto Cascada o Recursividad (Línea 42): Aquí ocurre la magia. El script utiliza una técnica llamada recursividad (la función mostrar_arbol se llama a sí misma). Si encuentra una carpeta permitida (como backend), entra en ella, dibuja lo que hay dentro usando símbolos como ├── o └──, y si encuentra otra subcarpeta dentro, vuelve a entrar hasta terminar con todo el proyecto.
+
+### 🚀 ¿Cómo se utiliza?
+Para ver la estructura limpia de TubePipe en cualquier momento, solo debes abrir tu terminal en la raíz del proyecto y ejecutar:
+
+```bash
+python ver_arbol.py
+```
+(Recuerda que en Linux o Mac, puede que necesites escribir python3 ver_arbol.py).
+
+El resultado será un mapa perfecto en texto plano que puedes copiar y pegar directamente en tus notas o documentación para presumir el orden de tu arquitectura. ¡Es un excelente añadido para el flujo de desarrollo!

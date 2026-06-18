@@ -14,10 +14,16 @@ __pycache__/
 # ==========================================
 # 2. Django (Base de datos y Descargas)
 # ==========================================
-db.sqlite3
-db.sqlite3-journal
-backend/downloads_media/
+# Ignora la base de datos local dentro de backend
 backend/db.sqlite3
+backend/db.sqlite3-journal
+
+# Ignora los archivos descargados y carpetas por usuario
+backend/downloads_media/
+
+# Ignora los archivos temporales de descarga de yt-dlp en cualquier lugar
+*.part
+*.ytdl
 
 # ==========================================
 # 3. Frontend (Node.js / React / Vite)
