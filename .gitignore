@@ -1,7 +1,7 @@
 # ==========================================
 # 1. Entornos Virtuales y Basura de Python
 # ==========================================
-env_tubepipe/
+.env_tubepipe/
 venv/
 .venv/
 env/

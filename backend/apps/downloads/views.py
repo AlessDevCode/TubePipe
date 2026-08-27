@@ -1,5 +1,10 @@
 import os
+import re
+import json
+import urllib.request
+import requests
 import yt_dlp
+from yt_dlp.utils import DownloadError
 from django.conf import settings
 from django.http import FileResponse
 from rest_framework.decorators import api_view, permission_classes
@@ -8,14 +13,107 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import DownloadRecord
 from .serializers import DownloadRecordSerializer
+
+
+def unshorten_url(url):
+    """Resuelve enlaces acortados (ej: vt.tiktok.com)."""
+    try:
+        req = urllib.request.Request(
+            url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return response.geturl()
+    except Exception:
+        return url
+
+
+def extract_tiktok_photo_audio(url, output_path):
+    """Extrae directamente la pista de audio de un carrusel /photo/ de TikTok mediante análisis multinivel."""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        html = response.text
+    except Exception as e:
+        return False, f"Error al conectar con TikTok: {str(e)}", None
+
+    play_url = None
+    title = "TikTok Audio"
+
+    # 1. Búsqueda directa por patrones de URL de audio en CDN de TikTok (.mp3 o parámetros de audio)
+    audio_matches = re.findall(
+        r'https://[^\s"\'<>]+(?:tik-tok|tiktokcdn|akamaized)[^\s"\'<>]+(?:\.mp3|\?mime_type=audio_mp3|/play/)[^\s"\'<>]*', 
+        html
+    )
+    if audio_matches:
+        play_url = audio_matches[0]
+
+    # 2. Búsqueda secundaria de llaves playUrl o play_url en el texto plano
+    if not play_url:
+        raw_urls = re.findall(r'"playUrl"\s*:\s*"([^"]+)"', html) or re.findall(r'"play_url"\s*:\s*"([^"]+)"', html)
+        if raw_urls:
+            play_url = raw_urls[0]
+
+    # 3. Búsqueda recursiva profunda dentro de bloques JSON rehidratados (SIGI_STATE, __UNIVERSAL_DATA..., etc)
+    if not play_url:
+        for script_id in ['__UNIVERSAL_DATA_FOR_REHYDRATION__', 'SIGI_STATE', '__NEXT_DATA__']:
+            match = re.search(f'<script id="{script_id}"[^>]*>(.*?)</script>', html)
+            if match:
+                try:
+                    data = json.loads(match.group(1))
+
+                    def search_audio_key(item):
+                        if isinstance(item, dict):
+                            for k, v in item.items():
+                                if k in ['playUrl', 'play_url'] and isinstance(v, str) and v.startswith('http'):
+                                    return v
+                                res = search_audio_key(v)
+                                if res: 
+                                    return res
+                        elif isinstance(item, list):
+                            for element in item:
+                                res = search_audio_key(element)
+                                if res: 
+                                    return res
+                        return None
+
+                    play_url = search_audio_key(data)
+                    if play_url:
+                        break
+                except Exception:
+                    pass
+
+    if not play_url:
+        return False, "No se pudo extraer el enlace de la pista de audio en esta publicación.", None
+
+    # Limpiar formato de URL codificada
+    play_url = play_url.replace(r'\u002F', '/').replace(r'\/', '/').replace(r'\u0026', '&')
+
+    # Descargar el archivo binario del audio
+    try:
+        audio_req = requests.get(play_url, headers=headers, timeout=15)
+        if audio_req.status_code == 200 and len(audio_req.content) > 1000:
+            with open(output_path, 'wb') as f:
+                f.write(audio_req.content)
+            return True, output_path, title
+        else:
+            return False, "La respuesta del servidor de audio de TikTok no fue válida.", None
+    except Exception as e:
+        return False, f"Error de descarga binaria: {str(e)}", None
+
+
 @api_view(['GET'])
-@permission_classes([IsAuthenticated]) # Protege el historial, requiere JWT
+@permission_classes([IsAuthenticated])
 def get_history(request):
-    """Devuelve la lista de videos descargados EXCLUSIVAMENTE por el usuario autenticado."""
-    # Filtramos por request.user para que no vea descargas ajenas
     records = DownloadRecord.objects.filter(user=request.user).order_by('-created_at')
     serializer = DownloadRecordSerializer(records, many=True)
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -29,49 +127,67 @@ def download_video(request):
     if file_format not in ['mp3', 'mp4', 'm4a']:
         return Response({"error": "Formato no válido. Use 'mp3', 'mp4' o 'm4a'."}, status=status.HTTP_400_BAD_REQUEST)
 
+    processed_url = unshorten_url(url)
     record = DownloadRecord.objects.create(url=url, status='pending', user=request.user)
 
-    try: 
-        # Tomamos settings.MEDIA_ROOT y le concatenamos el nombre del usuario logueado
-        user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username)
+    user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username)
+    os.makedirs(user_folder, exist_ok=True)
+
+    # MANEJO AUTOMÁTICO PARA PUBLICACIONES DE FOTOS (/photo/)
+    if '/photo/' in processed_url:
+        # Si estaba seleccionado MP4, lo convertimos a MP3 automáticamente sin dar error
+        if file_format == 'mp4':
+            file_format = 'mp3'
         
-        # Nos aseguramos de que la ruta exista en el disco duro, si no, se crea automáticamente
-        os.makedirs(user_folder, exist_ok=True)
+        target_filename = os.path.join(user_folder, f"audio_tiktok_{record.id}.{file_format}")
+        success, result_path, title = extract_tiktok_photo_audio(processed_url, target_filename)
 
-        # Plantilla de salida limpia y absoluta para yt-dlp
+        if success and os.path.exists(result_path):
+            record.title = title[:100] if title else "TikTok Audio"
+            record.duration = 0
+            record.status = 'completed'
+            record.save()
+            return FileResponse(open(result_path, 'rb'), as_attachment=True)
+        else:
+            record.status = 'failed'
+            record.save()
+            return Response({"error": result_path if isinstance(result_path, str) else "Error al extraer el audio del carrusel."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # FLUJO ESTÁNDAR CON YT-DLP (Para videos normales)
+    try: 
         out_template = os.path.join(user_folder, '%(title)s.%(ext)s')
+        ydl_opts = {
+            'outtmpl': out_template,
+            'noplaylist': True,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            }
+        }
 
-        # Configuración condicional del flujo de yt-dlp usando la plantilla limpia
         if file_format == 'mp3':
-            ydl_opts = {
+            ydl_opts.update({
                 'format': 'bestaudio/best',
-                'outtmpl': out_template,  # Usamos la variable limpia
-                'noplaylist': True,
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }],
-            }
+            })
         elif file_format == 'm4a':
-            ydl_opts = {
+            ydl_opts.update({
                 'format': 'bestaudio[ext=m4a]/bestaudio',
-                'outtmpl': out_template,  # Usamos la variable limpia
-                'noplaylist': True,
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'm4a',
                 }],
-            }
-        else: # mp4
-            ydl_opts = {
+            })
+        else:
+            ydl_opts.update({
                 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-                'outtmpl': out_template,  # Usamos la variable limpia
-                'noplaylist': True,
-            }
+            })
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+            info = ydl.extract_info(processed_url, download=True)
             filename = ydl.prepare_filename(info)
             
             if file_format == 'mp3':
@@ -79,28 +195,31 @@ def download_video(request):
             elif file_format == 'm4a':
                 filename = os.path.splitext(filename)[0] + '.m4a'
             
-            record.title = info.get('title', f'Audio {file_format.upper()} sin título' if file_format != 'mp4' else 'Video sin título')
+            record.title = info.get('title', 'Video sin título')
             record.duration = info.get('duration', 0)
             record.status = 'completed'
             record.save()
 
         if os.path.exists(filename):
-            response = FileResponse(open(filename, 'rb'), as_attachment=True)
-            return response
+            return FileResponse(open(filename, 'rb'), as_attachment=True)
         else:
-            raise FileNotFoundError("El archivo procesado no se encontró en el servidor.")
+            raise FileNotFoundError("El archivo procesado no se encontró.")
+
+    except DownloadError:
+        record.status = 'failed'
+        record.save()
+        return Response({"error": "No se pudo procesar la URL proporcionada."}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
         record.status = 'failed'
         record.save()
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated]) # Endpoint de borrado protegido
+@permission_classes([IsAuthenticated])
 def delete_history(request, pk):
-    """Elimina un registro del historial si pertenece al usuario autenticado."""
     try:
-        # Buscamos el registro asegurándonos de que pertenezca a quien hace la petición
         record = DownloadRecord.objects.get(pk=pk, user=request.user)
         record.delete()
         return Response({"message": "Registro eliminado correctamente del historial."}, status=status.HTTP_200_OK)

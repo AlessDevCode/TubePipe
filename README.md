@@ -327,10 +327,10 @@ En lugar de usar un comando de Python global (que requeriría activar el entorno
 
 ```json
 "scripts": {
-  "dev": "concurrently \"cd ../backend && ./env_tubepipe/bin/python manage.py runserver\" \"vite\"",
-  "build": "vite build",
-  "lint": "eslint .",
-  "preview": "vite preview"
+   "dev": "concurrently \"cd ..\\backend && .\\env_tubepipe\\Scripts\\python.exe manage.py runserver\" \"vite\"",
+   "build": "vite build",
+   "lint": "eslint .",
+   "preview": "vite preview"
 }
 ```
 > (Nota: Si no usas Vite y tu script original usaba next o react-scripts start, simplemente reemplaza la palabra "vite" al final por tu comando original).
