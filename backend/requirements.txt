@@ -1,4 +1,4 @@
-Django>=5.0,<6.0
+Django==5.1.6
 asgiref
 certifi
 cffi
