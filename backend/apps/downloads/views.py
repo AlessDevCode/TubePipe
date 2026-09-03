@@ -164,14 +164,25 @@ def download_video(request):
             'outtmpl': out_template,
             'noplaylist': True,
             'ffmpeg_location': '/usr/bin/ffmpeg',
+            # Simular clientes móviles para evitar la detección de IP de Render/datacenter
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['ios', 'android', 'mweb'],
+                }
+            },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
             }
         }
 
-        # Manejo seguro de cookies en directorio temporal del sistema (/tmp)
+        # Manejo seguro de cookies en directorio temporal (/tmp) con formato estricto
         cookies_content = os.environ.get('YOUTUBE_COOKIES')
         if cookies_content:
+            cookies_content = cookies_content.strip()
+            # Garantizar que contenga el encabezado requerido por yt-dlp
+            if not cookies_content.startswith('# Netscape'):
+                cookies_content = "# Netscape HTTP Cookie File\n" + cookies_content
+
             cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, dir='/tmp', suffix='.txt')
             cookie_file.write(cookies_content)
             cookie_file.flush()
