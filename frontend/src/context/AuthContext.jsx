@@ -8,7 +8,6 @@ export function AuthProvider({ children }) {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    // Al cargar la app, verificamos si hay un usuario guardado en el navegador
     const storedUser = localStorage.getItem('username');
     const token = localStorage.getItem('accessToken');
     if (storedUser && token) {
@@ -26,24 +25,32 @@ export function AuthProvider({ children }) {
       setUser({ username });
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.detail || "Credenciales incorrectas" 
-      };
+      const message = error.response?.data?.detail 
+        || "Credenciales incorrectas o ruta no encontrada";
+      return { success: false, message };
     }
   };
 
   const register = async (username, email, password) => {
     try {
       await API.post('/auth/register/', { username, email, password });
-      // Tras registrar con éxito, lo mandamos al login automáticamente
       return await login(username, password);
     } catch (error) {
       const errors = error.response?.data;
-      let errorMsg = "Error en el registro";
+      let errorMsg = "Error al conectar con el servidor (404 o sin conexión)";
+
       if (errors) {
-        errorMsg = Object.values(errors).flat().join(" ");
+        if (typeof errors === 'string') {
+          errorMsg = errors;
+        } else if (errors.detail) {
+          errorMsg = errors.detail;
+        } else if (typeof errors === 'object') {
+          errorMsg = Object.entries(errors)
+            .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.join(' ') : val}`)
+            .join(' | ');
+        }
       }
+      
       return { success: false, message: errorMsg };
     }
   };

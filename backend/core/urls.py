@@ -8,11 +8,11 @@ from rest_framework_simplejwt.views import (
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    # Endpoints de Autenticación y Gestión de Usuarios
-    path('api/auth/', include('apps.users.urls')),
-    path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'), # Servirá como LOGIN
+    # Rutas para autenticación
+    path('api/auth/', include('apps.users.urls')), # Incluye tu register/ de apps.users
+    path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    
-    # Endpoints del Historial de Descargas
-    path('api/', include('apps.downloads.urls')),
+
+    # Rutas de descargas (si tienes la app downloads)
+    path('api/downloads/', include('apps.downloads.urls')),
 ]
