@@ -135,3 +135,7 @@ SIMPLE_JWT = {
 
 MEDIA_ROOT = BASE_DIR / 'downloads_media'
 MEDIA_URL = '/media/'
+
+CORS_ALLOWED_ORIGINS = [
+    "https://tube-pipe.vercel.app",
+]
