@@ -13,7 +13,7 @@ function Home() {
   setDownloading(true);
   try {
     const response = await API.post(
-      '/download/', 
+      '/downloads/', 
       { url, format }, 
       { responseType: 'blob' }
     );
