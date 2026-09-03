@@ -1,21 +1,22 @@
 import os
 import sys
 from pathlib import Path
+from datetime import timedelta
+import dj_database_url
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde el archivo .env
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+# Configuración leída desde el .env
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-!2qpmro6am6w-+xii6so48h9^^=aezplh#l&+d9(w4dv^rjr)s')
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!2qpmro6am6w-+xii6so48h9^^=aezplh#l&+d9(w4dv^rjr)s'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # <-- Agregar esta línea
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -69,20 +71,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+# Configuración de la base de datos de Supabase (PostgreSQL)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
 
 
 # Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -100,9 +99,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-es'
 
 TIME_ZONE = 'UTC'
 
@@ -112,9 +109,8 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
-
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Permitir peticiones desde el entorno local de React (Vite)
 CORS_ALLOWED_ORIGINS = [
@@ -129,8 +125,7 @@ REST_FRAMEWORK = {
     )
 }
 
-# Configuración extendida opcional para SimpleJWT (Control de tiempo de vida de los tokens)
-from datetime import timedelta
+# Configuración extendida para SimpleJWT (Control de tiempo de vida de los tokens)
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # El token de acceso dura 1 día
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7), # El token de refresco dura 7 días
@@ -139,6 +134,4 @@ SIMPLE_JWT = {
 }
 
 MEDIA_ROOT = BASE_DIR / 'downloads_media'
-
-# URL pública para acceder a los archivos desde el navegador (opcional en el futuro)
 MEDIA_URL = '/media/'

@@ -2,6 +2,7 @@
 # 1. Entornos Virtuales y Basura de Python
 # ==========================================
 .env_tubepipe/
+env_tubepipe/
 venv/
 .venv/
 env/
@@ -68,3 +69,11 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+.env
+db.sqlite3
+__pycache__/
+*.pyc
+downloads_media/
+staticfiles/
+.env_tubepipe/
