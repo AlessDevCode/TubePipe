@@ -1,6 +1,8 @@
 import os
 import re
 import json
+import logging
+import tempfile
 import urllib.request
 import requests
 import yt_dlp
@@ -13,6 +15,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import DownloadRecord
 from .serializers import DownloadRecordSerializer
+
+logger = logging.getLogger(__name__)
 
 
 def unshorten_url(url):
@@ -153,21 +157,26 @@ def download_video(request):
             return Response({"error": result_path if isinstance(result_path, str) else "Error al extraer el audio del carrusel."}, status=status.HTTP_400_BAD_REQUEST)
 
     # FLUJO ESTÁNDAR CON YT-DLP (Para videos normales)
+    cookie_file = None
     try: 
         out_template = os.path.join(user_folder, '%(title)s.%(ext)s')
         ydl_opts = {
             'outtmpl': out_template,
             'noplaylist': True,
-            'ffmpeg_location': '/usr/bin/ffmpeg',  # Especifica la ruta instalada en la imagen Docker
-            'extractor_args': {                    # Evita bloqueos de IP de datacenter simulando clientes móviles
-                'youtube': {
-                    'player_client': ['android', 'ios', 'web']
-                }
-            },
+            'ffmpeg_location': '/usr/bin/ffmpeg',
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             }
         }
+
+        # Manejo seguro de cookies en directorio temporal del sistema (/tmp)
+        cookies_content = os.environ.get('YOUTUBE_COOKIES')
+        if cookies_content:
+            cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, dir='/tmp', suffix='.txt')
+            cookie_file.write(cookies_content)
+            cookie_file.flush()
+            cookie_file.close()
+            ydl_opts['cookiefile'] = cookie_file.name
 
         if file_format == 'mp3':
             ydl_opts.update({
@@ -208,18 +217,27 @@ def download_video(request):
         if os.path.exists(filename):
             return FileResponse(open(filename, 'rb'), as_attachment=True)
         else:
-            raise FileNotFoundError(f"El archivo procesado no se encontró en la ruta {filename}")
+            raise FileNotFoundError("El archivo procesado no se encontró.")
 
     except DownloadError as e:
+        logger.error(f"Error de yt-dlp: {str(e)}")
         record.status = 'failed'
         record.save()
-        # Retorna el mensaje exacto enviado por yt-dlp
-        return Response({"error": f"Error de descarga con yt-dlp: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "YouTube bloqueó la descarga o requiere verificación de bot."}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
+        logger.error(f"Error interno: {str(e)}")
         record.status = 'failed'
         record.save()
-        return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": "Error interno del servidor al procesar el archivo."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    finally:
+        # Garantiza la destrucción inmediata del archivo de cookies
+        if cookie_file and os.path.exists(cookie_file.name):
+            try:
+                os.remove(cookie_file.name)
+            except Exception:
+                pass
 
 
 @api_view(['DELETE'])
