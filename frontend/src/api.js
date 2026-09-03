@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Si existe la variable en Vercel, usa Render. Si no, usa tu localhost.
 const BASE_URL = import.meta.env.VITE_API_URL 
   ? `${import.meta.env.VITE_API_URL}/api`
   : 'http://127.0.0.1:8000/api';
@@ -9,7 +8,6 @@ const API = axios.create({
   baseURL: BASE_URL,
 });
 
-// Interceptor para inyectar el token JWT en cada petición saliente
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
