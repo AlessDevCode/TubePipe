@@ -135,7 +135,6 @@ def download_video(request):
 
     # MANEJO AUTOMÁTICO PARA PUBLICACIONES DE FOTOS (/photo/)
     if '/photo/' in processed_url:
-        # Si estaba seleccionado MP4, lo convertimos a MP3 automáticamente sin dar error
         if file_format == 'mp4':
             file_format = 'mp3'
         
@@ -159,6 +158,12 @@ def download_video(request):
         ydl_opts = {
             'outtmpl': out_template,
             'noplaylist': True,
+            'ffmpeg_location': '/usr/bin/ffmpeg',  # Especifica la ruta instalada en la imagen Docker
+            'extractor_args': {                    # Evita bloqueos de IP de datacenter simulando clientes móviles
+                'youtube': {
+                    'player_client': ['android', 'ios', 'web']
+                }
+            },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             }
@@ -203,12 +208,13 @@ def download_video(request):
         if os.path.exists(filename):
             return FileResponse(open(filename, 'rb'), as_attachment=True)
         else:
-            raise FileNotFoundError("El archivo procesado no se encontró.")
+            raise FileNotFoundError(f"El archivo procesado no se encontró en la ruta {filename}")
 
-    except DownloadError:
+    except DownloadError as e:
         record.status = 'failed'
         record.save()
-        return Response({"error": "No se pudo procesar la URL proporcionada."}, status=status.HTTP_400_BAD_REQUEST)
+        # Retorna el mensaje exacto enviado por yt-dlp
+        return Response({"error": f"Error de descarga con yt-dlp: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
         record.status = 'failed'
