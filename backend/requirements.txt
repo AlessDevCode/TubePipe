@@ -20,3 +20,4 @@ tzdata
 urllib3
 whitenoise
 yt-dlp
+imageio-ffmpeg

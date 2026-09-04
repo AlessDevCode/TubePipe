@@ -6,6 +6,7 @@ import tempfile
 import base64
 import urllib.request
 import requests
+import imageio_ffmpeg
 import yt_dlp
 from yt_dlp.utils import DownloadError
 from django.conf import settings
@@ -18,7 +19,6 @@ from .models import DownloadRecord
 from .serializers import DownloadRecordSerializer
 
 logger = logging.getLogger(__name__)
-
 
 def unshorten_url(url):
     """Resuelve enlaces acortados (ej: vt.tiktok.com)."""
@@ -153,12 +153,15 @@ def download_video(request):
 
     cookie_file = None
     try: 
+        # Obtener la ruta binaria autónoma de FFmpeg instalada por Pip
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+
         out_template = os.path.join(user_folder, '%(title)s.%(ext)s')
         ydl_opts = {
             'outtmpl': out_template,
             'noplaylist': True,
-            'ffmpeg_location': '/usr/bin/ffmpeg',
-            'concurrent_fragment_downloads': 5,  # Acelera la descarga usando hilos paralelos
+            'ffmpeg_location': ffmpeg_exe,  # Asignación dinámica del ejecutable
+            'concurrent_fragment_downloads': 5,
             'socket_timeout': 15,
             'extractor_args': {
                 'youtube': {
@@ -200,7 +203,6 @@ def download_video(request):
             cookie_file.close()
             ydl_opts['cookiefile'] = cookie_file.name
 
-        # OPTIMIZACIÓN DE FORMATOS: Descarga directa de archivos simples sin re-procesamiento pesado
         if file_format == 'mp3':
             ydl_opts.update({
                 'format': 'ba[ext=m4a]/ba/b',
@@ -215,7 +217,6 @@ def download_video(request):
                 'format': 'ba[ext=m4a]/ba',
             })
         else:
-            # Prioriza contenedores mp3/mp4 únicos para evitar el renderizado lento de FFmpeg
             ydl_opts.update({
                 'format': 'b[ext=mp4]/best[ext=mp4]/b/best',
             })
