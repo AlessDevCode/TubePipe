@@ -173,16 +173,15 @@ def download_video(request):
             'ffmpeg_location': ffmpeg_exe,
             'concurrent_fragment_downloads': 5,
             'socket_timeout': 30,
-            # Autenticación mediante OAuth2 (reemplaza a las cookies caducadas)
-            'username': 'oauth2',
-            'password': '',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['tv', 'android', 'mweb'],
+                    'player_client': ['ios', 'android', 'mweb'],
+                    'player_skip': ['configs', 'webpage'],
                 }
             },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
             }
         }
 
