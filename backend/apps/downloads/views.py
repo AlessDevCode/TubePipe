@@ -4,6 +4,7 @@ import json
 import logging
 import tempfile
 import base64
+import shutil
 import urllib.request
 import requests
 import imageio_ffmpeg
@@ -20,6 +21,17 @@ from .serializers import DownloadRecordSerializer
 
 logger = logging.getLogger(__name__)
 
+def clean_user_folder(folder_path):
+    """Elimina archivos temporales antiguos para liberar espacio en el contenedor de Render."""
+    if os.path.exists(folder_path):
+        for f in os.listdir(folder_path):
+            file_p = os.path.join(folder_path, f)
+            try:
+                if os.path.isfile(file_p):
+                    os.remove(file_p)
+            except Exception:
+                pass
+
 def unshorten_url(url):
     """Resuelve enlaces acortados (ej: vt.tiktok.com)."""
     try:
@@ -32,9 +44,8 @@ def unshorten_url(url):
     except Exception:
         return url
 
-
 def extract_tiktok_photo_audio(url, output_path):
-    """Extrae directamente la pista de audio de un carrusel /photo/ de TikTok mediante análisis multinivel."""
+    """Extrae la pista de audio de un carrusel /photo/ de TikTok."""
     headers = {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -106,14 +117,12 @@ def extract_tiktok_photo_audio(url, output_path):
     except Exception as e:
         return False, f"Error de descarga binaria: {str(e)}", None
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_history(request):
     records = DownloadRecord.objects.filter(user=request.user).order_by('-created_at')
     serializer = DownloadRecordSerializer(records, many=True)
     return Response(serializer.data)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -130,8 +139,9 @@ def download_video(request):
     processed_url = unshorten_url(url)
     record = DownloadRecord.objects.create(url=url, status='pending', user=request.user)
 
-    user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username)
+    user_folder = os.path.join(settings.MEDIA_ROOT, str(request.user.username))
     os.makedirs(user_folder, exist_ok=True)
+    clean_user_folder(user_folder)  # Limpieza de descargas previas
 
     if '/photo/' in processed_url:
         if file_format == 'mp4':
@@ -153,16 +163,16 @@ def download_video(request):
 
     cookie_file = None
     try: 
-        # Obtener la ruta binaria autónoma de FFmpeg instalada por Pip
-        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        # Selecciona FFmpeg del sistema o el del paquete imageio
+        ffmpeg_exe = shutil.which("ffmpeg") or imageio_ffmpeg.get_ffmpeg_exe()
 
         out_template = os.path.join(user_folder, '%(title)s.%(ext)s')
         ydl_opts = {
             'outtmpl': out_template,
             'noplaylist': True,
-            'ffmpeg_location': ffmpeg_exe,  # Asignación dinámica del ejecutable
+            'ffmpeg_location': ffmpeg_exe,
             'concurrent_fragment_downloads': 5,
-            'socket_timeout': 15,
+            'socket_timeout': 30,
             'extractor_args': {
                 'youtube': {
                     'player_client': ['ios', 'android', 'mweb'],
@@ -178,7 +188,7 @@ def download_video(request):
         if cookies_content:
             try:
                 decoded = base64.b64decode(cookies_content).decode('utf-8')
-                if '# Netscape' in decoded or 'youtube.com' in decoded:
+                if '# Netscape' in decoded or 'youtube.com' in decoded or 'domain' in decoded:
                     cookies_content = decoded
             except Exception:
                 pass
@@ -260,7 +270,6 @@ def download_video(request):
                 os.remove(cookie_file.name)
             except Exception:
                 pass
-
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])

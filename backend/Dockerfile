@@ -20,5 +20,5 @@ RUN python manage.py collectstatic --noinput
 # Puerto que usará Render
 EXPOSE 10000
 
-# Comando para iniciar el backend con Gunicorn
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:10000"]
+# Comando para iniciar el backend con Gunicorn (Timeout aumentado a 120s)
+CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:10000", "--timeout", "120", "--workers", "2", "--threads", "2"]
