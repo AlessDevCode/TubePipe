@@ -175,12 +175,11 @@ def download_video(request):
             'socket_timeout': 30,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android_vr', 'mweb', 'web'],
+                    'player_client': ['ios', 'tv_embedded'],
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+                'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X; en_US)',
             }
         }
 
