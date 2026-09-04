@@ -160,18 +160,18 @@ def download_video(request):
             'ffmpeg_location': '/usr/bin/ffmpeg',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'ios', 'mweb', 'web'],
+                    'player_client': ['tv_embedded', 'mweb', 'android', 'ios'],
+                    'player_skip': ['webpage', 'configs'],
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             }
         }
 
-        # PROCESAMIENTO ROBUSTO DE COOKIES (Decodificación Base64 y reconstrucción de tabulaciones)
+        # Procesamiento de cookies
         cookies_content = os.environ.get('YOUTUBE_COOKIES', '').strip()
         if cookies_content:
-            # 1. Decodificar si se ingresó en formato Base64
             try:
                 decoded = base64.b64decode(cookies_content).decode('utf-8')
                 if '# Netscape' in decoded or 'youtube.com' in decoded:
@@ -179,7 +179,6 @@ def download_video(request):
             except Exception:
                 pass
 
-            # 2. Convertir espacios múltiples en tabulaciones reales (\t)
             fixed_lines = []
             for line in cookies_content.splitlines():
                 line_str = line.strip()
@@ -194,7 +193,6 @@ def download_video(request):
 
             final_cookies = "# Netscape HTTP Cookie File\n" + '\n'.join(fixed_lines)
 
-            # 3. Guardar archivo temporal en /tmp
             cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, dir='/tmp', suffix='.txt')
             cookie_file.write(final_cookies)
             cookie_file.flush()
@@ -243,16 +241,18 @@ def download_video(request):
             raise FileNotFoundError("El archivo procesado no se encontró.")
 
     except DownloadError as e:
-        logger.error(f"Error de yt-dlp: {str(e)}")
+        error_details = str(e)
+        logger.error(f"Error de yt-dlp: {error_details}")
         record.status = 'failed'
         record.save()
-        return Response({"error": "YouTube bloqueó la descarga o requiere verificación de bot."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": f"YouTube error: {error_details}"}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
-        logger.error(f"Error interno: {str(e)}")
+        error_details = str(e)
+        logger.error(f"Error interno: {error_details}")
         record.status = 'failed'
         record.save()
-        return Response({"error": "Error interno del servidor al procesar el archivo."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"Error del servidor: {error_details}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
 
     finally:
         if cookie_file and os.path.exists(cookie_file.name):
