@@ -173,13 +173,16 @@ def download_video(request):
             'ffmpeg_location': ffmpeg_exe,
             'concurrent_fragment_downloads': 5,
             'socket_timeout': 30,
+            # Autenticación mediante OAuth2 (reemplaza a las cookies caducadas)
+            'username': 'oauth2',
+            'password': '',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios', 'android', 'mweb'],
+                    'player_client': ['tv', 'android', 'mweb'],
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
             }
         }
 
