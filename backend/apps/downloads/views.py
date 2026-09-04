@@ -160,12 +160,12 @@ def download_video(request):
             'ffmpeg_location': '/usr/bin/ffmpeg',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['tv_embedded', 'mweb', 'android', 'ios'],
-                    'player_skip': ['webpage', 'configs'],
+                    # Se remueve 'player_skip' para permitir la extracción correcta de la respuesta del reproductor
+                    'player_client': ['ios', 'android', 'mweb'],
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
             }
         }
 
@@ -252,7 +252,7 @@ def download_video(request):
         logger.error(f"Error interno: {error_details}")
         record.status = 'failed'
         record.save()
-        return Response({"error": f"Error del servidor: {error_details}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+        return Response({"error": f"Error del servidor: {error_details}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)   
 
     finally:
         if cookie_file and os.path.exists(cookie_file.name):
