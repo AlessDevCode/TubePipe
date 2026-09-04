@@ -3,6 +3,7 @@ import re
 import json
 import logging
 import tempfile
+import base64
 import urllib.request
 import requests
 import yt_dlp
@@ -49,7 +50,6 @@ def extract_tiktok_photo_audio(url, output_path):
     play_url = None
     title = "TikTok Audio"
 
-    # 1. Búsqueda directa por patrones de URL de audio en CDN de TikTok (.mp3 o parámetros de audio)
     audio_matches = re.findall(
         r'https://[^\s"\'<>]+(?:tik-tok|tiktokcdn|akamaized)[^\s"\'<>]+(?:\.mp3|\?mime_type=audio_mp3|/play/)[^\s"\'<>]*', 
         html
@@ -57,13 +57,11 @@ def extract_tiktok_photo_audio(url, output_path):
     if audio_matches:
         play_url = audio_matches[0]
 
-    # 2. Búsqueda secundaria de llaves playUrl o play_url en el texto plano
     if not play_url:
         raw_urls = re.findall(r'"playUrl"\s*:\s*"([^"]+)"', html) or re.findall(r'"play_url"\s*:\s*"([^"]+)"', html)
         if raw_urls:
             play_url = raw_urls[0]
 
-    # 3. Búsqueda recursiva profunda dentro de bloques JSON rehidratados (SIGI_STATE, __UNIVERSAL_DATA..., etc)
     if not play_url:
         for script_id in ['__UNIVERSAL_DATA_FOR_REHYDRATION__', 'SIGI_STATE', '__NEXT_DATA__']:
             match = re.search(f'<script id="{script_id}"[^>]*>(.*?)</script>', html)
@@ -95,10 +93,8 @@ def extract_tiktok_photo_audio(url, output_path):
     if not play_url:
         return False, "No se pudo extraer el enlace de la pista de audio en esta publicación.", None
 
-    # Limpiar formato de URL codificada
     play_url = play_url.replace(r'\u002F', '/').replace(r'\/', '/').replace(r'\u0026', '&')
 
-    # Descargar el archivo binario del audio
     try:
         audio_req = requests.get(play_url, headers=headers, timeout=15)
         if audio_req.status_code == 200 and len(audio_req.content) > 1000:
@@ -137,7 +133,6 @@ def download_video(request):
     user_folder = os.path.join(settings.MEDIA_ROOT, request.user.username)
     os.makedirs(user_folder, exist_ok=True)
 
-    # MANEJO AUTOMÁTICO PARA PUBLICACIONES DE FOTOS (/photo/)
     if '/photo/' in processed_url:
         if file_format == 'mp4':
             file_format = 'mp3'
@@ -156,7 +151,6 @@ def download_video(request):
             record.save()
             return Response({"error": result_path if isinstance(result_path, str) else "Error al extraer el audio del carrusel."}, status=status.HTTP_400_BAD_REQUEST)
 
-    # FLUJO ESTÁNDAR CON YT-DLP (Para videos normales)
     cookie_file = None
     try: 
         out_template = os.path.join(user_folder, '%(title)s.%(ext)s')
@@ -164,27 +158,45 @@ def download_video(request):
             'outtmpl': out_template,
             'noplaylist': True,
             'ffmpeg_location': '/usr/bin/ffmpeg',
-            # Simular clientes móviles para evitar la detección de IP de Render/datacenter
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios', 'android', 'mweb'],
+                    'player_client': ['android', 'ios', 'mweb', 'web'],
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             }
         }
 
-        # Manejo seguro de cookies en directorio temporal (/tmp) con formato estricto
-        cookies_content = os.environ.get('YOUTUBE_COOKIES')
+        # PROCESAMIENTO ROBUSTO DE COOKIES (Decodificación Base64 y reconstrucción de tabulaciones)
+        cookies_content = os.environ.get('YOUTUBE_COOKIES', '').strip()
         if cookies_content:
-            cookies_content = cookies_content.strip()
-            # Garantizar que contenga el encabezado requerido por yt-dlp
-            if not cookies_content.startswith('# Netscape'):
-                cookies_content = "# Netscape HTTP Cookie File\n" + cookies_content
+            # 1. Decodificar si se ingresó en formato Base64
+            try:
+                decoded = base64.b64decode(cookies_content).decode('utf-8')
+                if '# Netscape' in decoded or 'youtube.com' in decoded:
+                    cookies_content = decoded
+            except Exception:
+                pass
 
+            # 2. Convertir espacios múltiples en tabulaciones reales (\t)
+            fixed_lines = []
+            for line in cookies_content.splitlines():
+                line_str = line.strip()
+                if not line_str or line_str.startswith('#'):
+                    fixed_lines.append(line_str)
+                else:
+                    parts = re.split(r'\s+', line_str)
+                    if len(parts) >= 7:
+                        fixed_lines.append('\t'.join(parts[:7]))
+                    else:
+                        fixed_lines.append(line_str)
+
+            final_cookies = "# Netscape HTTP Cookie File\n" + '\n'.join(fixed_lines)
+
+            # 3. Guardar archivo temporal en /tmp
             cookie_file = tempfile.NamedTemporaryFile(mode='w', delete=False, dir='/tmp', suffix='.txt')
-            cookie_file.write(cookies_content)
+            cookie_file.write(final_cookies)
             cookie_file.flush()
             cookie_file.close()
             ydl_opts['cookiefile'] = cookie_file.name
@@ -243,7 +255,6 @@ def download_video(request):
         return Response({"error": "Error interno del servidor al procesar el archivo."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
-        # Garantiza la destrucción inmediata del archivo de cookies
         if cookie_file and os.path.exists(cookie_file.name):
             try:
                 os.remove(cookie_file.name)
