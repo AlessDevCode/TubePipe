@@ -158,9 +158,10 @@ def download_video(request):
             'outtmpl': out_template,
             'noplaylist': True,
             'ffmpeg_location': '/usr/bin/ffmpeg',
+            'concurrent_fragment_downloads': 5,  # Acelera la descarga usando hilos paralelos
+            'socket_timeout': 15,
             'extractor_args': {
                 'youtube': {
-                    # Se remueve 'player_skip' para permitir la extracción correcta de la respuesta del reproductor
                     'player_client': ['ios', 'android', 'mweb'],
                 }
             },
@@ -199,26 +200,24 @@ def download_video(request):
             cookie_file.close()
             ydl_opts['cookiefile'] = cookie_file.name
 
+        # OPTIMIZACIÓN DE FORMATOS: Descarga directa de archivos simples sin re-procesamiento pesado
         if file_format == 'mp3':
             ydl_opts.update({
-                'format': 'bestaudio/best',
+                'format': 'ba[ext=m4a]/ba/b',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
-                    'preferredquality': '192',
+                    'preferredquality': '128',
                 }],
             })
         elif file_format == 'm4a':
             ydl_opts.update({
-                'format': 'bestaudio[ext=m4a]/bestaudio',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'm4a',
-                }],
+                'format': 'ba[ext=m4a]/ba',
             })
         else:
+            # Prioriza contenedores mp3/mp4 únicos para evitar el renderizado lento de FFmpeg
             ydl_opts.update({
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                'format': 'b[ext=mp4]/best[ext=mp4]/b/best',
             })
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
